@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Daily Work Log</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1A1A1A">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, Roboto, Segoe UI, sans-serif;
+    background: #f3f2ee;
+    color: #1a1a1a;
+    min-height: 100vh;
+  }
+  .app { max-width: 480px; margin: 0 auto; padding: 16px; padding-bottom: 60px; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .topbar h1 { font-size: 18px; font-weight: 600; margin: 0; }
+  .lang-row { display: flex; gap: 6px; }
+  .lang-row button {
+    padding: 5px 12px; font-size: 12px; border-radius: 8px;
+    border: 1px solid #ccc9c0; background: #fff;
+  }
+  .lang-row button.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .home-btn {
+    display: flex; align-items: center; gap: 14px;
+    width: 100%; padding: 20px; margin-bottom: 14px;
+    background: #fff; border: 1px solid #e2e0d8; border-radius: 14px;
+    font-size: 16px; font-weight: 600; text-align: left; color: #1a1a1a;
+  }
+  .home-btn .icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: #1a1a1a; color: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .home-btn .sub { font-size: 12px; font-weight: 400; color: #777; margin-top: 2px; }
+
+  .back-btn {
+    padding: 6px 14px; font-size: 13px; border-radius: 8px;
+    border: 1px solid #d3d1c7; background: #fff; margin-bottom: 16px;
+  }
+
+  .step-card {
+    background: #fff; border-radius: 14px; padding: 20px;
+    border: 1px solid #e2e0d8;
+  }
+  .step-progress { font-size: 12px; color: #999; margin-bottom: 6px; }
+  .step-title { font-size: 16px; font-weight: 600; margin: 0 0 14px; }
+  input, textarea {
+    width: 100%; padding: 12px; font-size: 15px;
+    border-radius: 10px; border: 1px solid #d3d1c7; margin-bottom: 6px;
+    font-family: inherit; resize: vertical;
+  }
+  .err { color: #b03030; font-size: 13px; margin: 2px 0 10px; display: none; }
+  .step-actions { display: flex; gap: 10px; margin-top: 14px; }
+  .btn-primary {
+    flex: 1; padding: 12px; font-size: 15px; font-weight: 600;
+    background: #1a1a1a; color: #fff; border: none; border-radius: 10px;
+  }
+  .btn-secondary {
+    padding: 12px 16px; font-size: 15px; font-weight: 500;
+    background: #fff; color: #1a1a1a; border: 1px solid #d3d1c7; border-radius: 10px;
+  }
+
+  .report-actions { display: flex; gap: 10px; margin-bottom: 14px; }
+  .report-actions button {
+    flex: 1; padding: 10px; font-size: 13px; font-weight: 600;
+    border-radius: 10px; border: none; background: #1a1a1a; color: #fff;
+  }
+  .table-wrap {
+    overflow-x: auto; border: 1px solid #e2e0d8; border-radius: 10px; background: #fff;
+  }
+  table { border-collapse: collapse; width: 100%; min-width: 700px; font-size: 12.5px; }
+  th {
+    text-align: left; padding: 9px 10px; background: #eceae2;
+    border-bottom: 1px solid #d3d1c7; white-space: nowrap; font-weight: 600;
+  }
+  td { padding: 8px 10px; border-bottom: 1px solid #ece9e0; vertical-align: top; white-space: nowrap; }
+  td.work-cell { white-space: pre-wrap; min-width: 160px; }
+  tr:nth-child(even) td { background: #fafaf7; }
+  .empty-msg { padding: 16px; color: #999; font-size: 13px; text-align: center; }
+  .row-btn {
+    padding: 3px 8px; font-size: 11px; border-radius: 6px;
+    border: 1px solid #d3d1c7; background: #fff; margin-right: 4px;
+  }
+  .edit-box input, .edit-box textarea { margin-bottom: 8px; }
+  .edit-actions button {
+    padding: 5px 12px; font-size: 12px; border-radius: 6px;
+    border: 1px solid #d3d1c7; background: #fff; margin-right: 6px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <h1 id="pageTitle">Daily Work Log</h1>
+    <div class="lang-row">
+      <button id="langHi" class="active">हिंदी</button>
+      <button id="langEn">EN</button>
+    </div>
+  </div>
+
+  <div id="screenHome" class="screen active">
+    <button class="home-btn" id="goReport">
+      <span class="icon">&#128202;</span>
+      <span>
+        <div id="lblReportBtn">View Daily Report</div>
+        <div class="sub" id="lblReportSub">Excel jaisi report dekho</div>
+      </span>
+    </button>
+    <button class="home-btn" id="goWrite">
+      <span class="icon">&#9998;</span>
+      <span>
+        <div id="lblWriteBtn">Write Daily Work</div>
+        <div class="sub" id="lblWriteSub">Aaj ka kaam likho</div>
+      </span>
+    </button>
+  </div>
+
+  <div id="screenWrite" class="screen">
+    <button class="back-btn" id="backFromWrite1">&larr; <span id="lblBack1">Back</span></button>
+    <div class="step-card">
+      <div class="step-progress" id="stepProg">1 / 4</div>
+      <div class="step-title" id="stepTitle">Machine</div>
+      <input id="stepInput" type="text">
+      <p class="err" id="stepErr"></p>
+      <div class="step-actions">
+        <button class="btn-secondary" id="stepBack" style="display:none;">&larr;</button>
+        <button class="btn-primary" id="stepNext">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screenReport" class="screen">
+    <button class="back-btn" id="backFromReport">&larr; <span id="lblBack2">Back</span></button>
+    <div class="report-actions">
+      <button id="exportBtn">&#11015; <span id="lblExport">Export Excel</span></button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr id="headRow"></tr></thead>
+        <tbody id="reportBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const T = {
+  hi: {
+    appTitle: 'Daily Work Log',
+    reportBtn: 'View Daily Report', reportSub: 'Excel jaisi report dekho',
+    writeBtn: 'Write Daily Work', writeSub: 'Aaj ka kaam likho',
+    back: 'Back',
+    steps: ['Machine', 'Location', 'PLC', 'Aapne kya kaam kiya'],
+    stepPh: ['Machine ka naam', 'Location', 'PLC number / naam', 'Yahan likhiye...'],
+    next: 'Next', save: 'Save karo', errEmpty: 'Ye field khali nahi ho sakta',
+    exportLbl: 'Excel me bhejo',
+    empty: 'Abhi tak koi entry nahi hai.',
+    edit: 'Edit', del: 'Delete', update: 'Update', cancel: 'Cancel', confirmDel: 'Ye entry delete karni hai?',
+    cols: ['Date','Day','Time','Machine','Location','PLC','Kaam','Action']
+  },
+  en: {
+    appTitle: 'Daily Work Log',
+    reportBtn: 'View Daily Report', reportSub: 'See your Excel-style report',
+    writeBtn: 'Write Daily Work', writeSub: "Log today's work",
+    back: 'Back',
+    steps: ['Machine', 'Location', 'PLC', 'What did you do'],
+    stepPh: ['Machine name', 'Location', 'PLC number / name', 'Write here...'],
+    next: 'Next', save: 'Save', errEmpty: 'This field cannot be empty',
+    exportLbl: 'Export to Excel',
+    empty: 'No entries yet.',
+    edit: 'Edit', del: 'Delete', update: 'Update', cancel: 'Cancel', confirmDel: 'Delete this entry?',
+    cols: ['Date','Day','Time','Machine','Location','PLC','Work','Action']
+  }
+};
+let lang = 'hi';
+const STORAGE_KEY = 'dailyWorkLogEntriesV2';
+
+const el = id => document.getElementById(id);
+const screens = { home: el('screenHome'), write: el('screenWrite'), report: el('screenReport') };
+
+function showScreen(name) {
+  Object.values(screens).forEach(s => s.classList.remove('active'));
+  screens[name].classList.add('active');
+}
+
+function getEntries() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch (e) { return []; }
+}
+function setEntries(list) { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
+
+function fmtParts(ts) {
+  const d = new Date(ts);
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  return {
+    day: days[d.getDay()],
+    date: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+    time: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+  };
+}
+
+function applyLang() {
+  const t = T[lang];
+  el('pageTitle').textContent = t.appTitle;
+  el('lblReportBtn').textContent = t.reportBtn;
+  el('lblReportSub').textContent = t.reportSub;
+  el('lblWriteBtn').textContent = t.writeBtn;
+  el('lblWriteSub').textContent = t.writeSub;
+  el('lblBack1').textContent = t.back;
+  el('lblBack2').textContent = t.back;
+  el('lblExport').textContent = t.exportLbl;
+  el('langHi').classList.toggle('active', lang === 'hi');
+  el('langEn').classList.toggle('active', lang === 'en');
+  el('headRow').innerHTML = t.cols.map(c => '<th>' + c + '</th>').join('');
+  renderStep();
+  renderReport();
+}
+el('langHi').addEventListener('click', () => { lang = 'hi'; applyLang(); });
+el('langEn').addEventListener('click', () => { lang = 'en'; applyLang(); });
+
+// ---- navigation ----
+el('goReport').addEventListener('click', () => { showScreen('report'); renderReport(); });
+el('goWrite').addEventListener('click', () => { resetWizard(); showScreen('write'); });
+el('backFromWrite1').addEventListener('click', () => showScreen('home'));
+el('backFromReport').addEventListener('click', () => showScreen('home'));
+
+// ---- write wizard ----
+let wizardStep = 0;
+let wizardData = {};
+const FIELD_KEYS = ['machine', 'location', 'plc', 'work'];
+
+function resetWizard() {
+  wizardStep = 0;
+  wizardData = {};
+  renderStep();
+}
+
+function renderStep() {
+  const t = T[lang];
+  el('stepProg').textContent = (wizardStep + 1) + ' / ' + t.steps.length;
+  el('stepTitle').textContent = t.steps[wizardStep];
+  el('stepErr').style.display = 'none';
+  const input = el('stepInput');
+  input.value = wizardData[FIELD_KEYS[wizardStep]] || '';
+  input.placeholder = t.stepPh[wizardStep];
+
+  const oldInput = input;
+  const newInput = oldInput.cloneNode(true);
+  oldInput.parentNode.replaceChild(newInput, oldInput);
+  newInput.id = 'stepInput';
+
+  el('stepBack').style.display = wizardStep === 0 ? 'none' : 'inline-block';
+  el('stepNext').textContent = wizardStep === t.steps.length - 1 ? t.save : t.next;
+}
+
+el('stepBack').addEventListener('click', () => {
+  const val = el('stepInput').value.trim();
+  wizardData[FIELD_KEYS[wizardStep]] = val;
+  wizardStep--;
+  renderStep();
+});
+
+el('stepNext').addEventListener('click', () => {
+  const t = T[lang];
+  const val = el('stepInput').value.trim();
+  if (!val) {
+    el('stepErr').textContent = t.errEmpty;
+    el('stepErr').style.display = 'block';
+    return;
+  }
+  wizardData[FIELD_KEYS[wizardStep]] = val;
+
+  if (wizardStep === t.steps.length - 1) {
+    const list = getEntries();
+    list.push({
+      id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+      machine: wizardData.machine,
+      location: wizardData.location,
+      plc: wizardData.plc,
+      work: wizardData.work,
+      ts: Date.now()
+    });
+    setEntries(list);
+    showScreen('home');
+  } else {
+    wizardStep++;
+    renderStep();
+  }
+});
+
+// ---- report ----
+function renderReport() {
+  const t = T[lang];
+  const body = el('reportBody');
+  const items = getEntries().slice().sort((a, b) => b.ts - a.ts);
+  if (items.length === 0) {
+    body.innerHTML = '<tr><td colspan="8" class="empty-msg">' + t.empty + '</td></tr>';
+    return;
+  }
+  body.innerHTML = '';
+  items.forEach(it => {
+    const { day, date, time } = fmtParts(it.ts);
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + date + '</td>' +
+      '<td>' + day + '</td>' +
+      '<td>' + time + '</td>' +
+      '<td class="mach"></td>' +
+      '<td class="loc"></td>' +
+      '<td class="plc"></td>' +
+      '<td class="work-cell work"></td>' +
+      '<td style="white-space:nowrap;">' +
+        '<button class="row-btn editBtn">' + t.edit + '</button>' +
+        '<button class="row-btn delBtn">' + t.del + '</button>' +
+      '</td>';
+    tr.querySelector('.mach').textContent = it.machine || '';
+    tr.querySelector('.loc').textContent = it.location || '';
+    tr.querySelector('.plc').textContent = it.plc || '';
+    tr.querySelector('.work').textContent = it.work || '';
+    tr.querySelector('.editBtn').addEventListener('click', () => startEdit(tr, it, t));
+    tr.querySelector('.delBtn').addEventListener('click', () => {
+      if (confirm(t.confirmDel)) {
+        setEntries(getEntries().filter(e => e.id !== it.id));
+        renderReport();
+      }
+    });
+    body.appendChild(tr);
+  });
+}
+
+function startEdit(tr, it, t) {
+  tr.innerHTML = '<td colspan="8" class="edit-box">' +
+    '<input class="eMach" placeholder="Machine">' +
+    '<input class="eLoc" placeholder="Location">' +
+    '<input class="ePlc" placeholder="PLC">' +
+    '<textarea class="eWork" rows="2"></textarea>' +
+    '<div class="edit-actions">' +
+      '<button class="updBtn">' + t.update + '</button>' +
+      '<button class="cancelBtn">' + t.cancel + '</button>' +
+    '</div>' +
+  '</td>';
+  tr.querySelector('.eMach').value = it.machine || '';
+  tr.querySelector('.eLoc').value = it.location || '';
+  tr.querySelector('.ePlc').value = it.plc || '';
+  tr.querySelector('.eWork').value = it.work || '';
+  tr.querySelector('.updBtn').addEventListener('click', () => {
+    const list = getEntries();
+    const idx = list.findIndex(e => e.id === it.id);
+    if (idx > -1) {
+      list[idx].machine = tr.querySelector('.eMach').value.trim();
+      list[idx].location = tr.querySelector('.eLoc').value.trim();
+      list[idx].plc = tr.querySelector('.ePlc').value.trim();
+      const w = tr.querySelector('.eWork').value.trim();
+      if (w) list[idx].work = w;
+      setEntries(list);
+    }
+    renderReport();
+  });
+  tr.querySelector('.cancelBtn').addEventListener('click', renderReport);
+}
+
+// ---- excel export ----
+el('exportBtn').addEventListener('click', () => {
+  const t = T[lang];
+  const items = getEntries().slice().sort((a, b) => b.ts - a.ts);
+  const rows = items.map(it => {
+    const { day, date, time } = fmtParts(it.ts);
+    const row = {};
+    row[t.cols[0]] = date;
+    row[t.cols[1]] = day;
+    row[t.cols[2]] = time;
+    row[t.cols[3]] = it.machine || '';
+    row[t.cols[4]] = it.location || '';
+    row[t.cols[5]] = it.plc || '';
+    row[t.cols[6]] = it.work || '';
+    return row;
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:12},{wch:8},{wch:8},{wch:16},{wch:16},{wch:14},{wch:40}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Daily Log');
+  const fname = 'daily-work-log-' + new Date().toISOString().slice(0,10) + '.xlsx';
+  XLSX.writeFile(wb, fname);
+});
+
+applyLang();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
