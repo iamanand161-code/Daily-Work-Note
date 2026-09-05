@@ -13,7 +13,7 @@ jobs:
 
       - name: Extract Android project
         run: |
-          unzip -q DailyWorkNote-Temporary-Android-Project.zip -d build-project
+          unzip -q DailyWorkNote-Temporary-Android-Project-FIXED.zip -d build-project
 
       - name: Setup Java
         uses: actions/setup-java@v4
