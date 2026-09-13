@@ -1,407 +1,1704 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Daily Work Log</title>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1A1A1A">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: -apple-system, Roboto, Segoe UI, sans-serif;
-    background: #f3f2ee;
-    color: #1a1a1a;
-    min-height: 100vh;
-  }
-  .app { max-width: 480px; margin: 0 auto; padding: 16px; padding-bottom: 60px; }
-  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-  .topbar h1 { font-size: 18px; font-weight: 600; margin: 0; }
-  .lang-row { display: flex; gap: 6px; }
-  .lang-row button {
-    padding: 5px 12px; font-size: 12px; border-radius: 8px;
-    border: 1px solid #ccc9c0; background: #fff;
-  }
-  .lang-row button.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
-  .screen { display: none; }
-  .screen.active { display: block; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2563eb" />
+  <title>Daily Work Note</title>
 
-  .home-btn {
-    display: flex; align-items: center; gap: 14px;
-    width: 100%; padding: 20px; margin-bottom: 14px;
-    background: #fff; border: 1px solid #e2e0d8; border-radius: 14px;
-    font-size: 16px; font-weight: 600; text-align: left; color: #1a1a1a;
-  }
-  .home-btn .icon {
-    width: 40px; height: 40px; border-radius: 10px;
-    background: #1a1a1a; color: #fff; display: flex; align-items: center; justify-content: center;
-    font-size: 18px; flex-shrink: 0;
-  }
-  .home-btn .sub { font-size: 12px; font-weight: 400; color: #777; margin-top: 2px; }
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
-  .back-btn {
-    padding: 6px 14px; font-size: 13px; border-radius: 8px;
-    border: 1px solid #d3d1c7; background: #fff; margin-bottom: 16px;
-  }
+  <style>
+    :root {
+      --primary: #2563eb;
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --radius: 18px;
+    }
 
-  .step-card {
-    background: #fff; border-radius: 14px; padding: 20px;
-    border: 1px solid #e2e0d8;
-  }
-  .step-progress { font-size: 12px; color: #999; margin-bottom: 6px; }
-  .step-title { font-size: 16px; font-weight: 600; margin: 0 0 14px; }
-  input, textarea {
-    width: 100%; padding: 12px; font-size: 15px;
-    border-radius: 10px; border: 1px solid #d3d1c7; margin-bottom: 6px;
-    font-family: inherit; resize: vertical;
-  }
-  .err { color: #b03030; font-size: 13px; margin: 2px 0 10px; display: none; }
-  .step-actions { display: flex; gap: 10px; margin-top: 14px; }
-  .btn-primary {
-    flex: 1; padding: 12px; font-size: 15px; font-weight: 600;
-    background: #1a1a1a; color: #fff; border: none; border-radius: 10px;
-  }
-  .btn-secondary {
-    padding: 12px 16px; font-size: 15px; font-weight: 500;
-    background: #fff; color: #1a1a1a; border: 1px solid #d3d1c7; border-radius: 10px;
-  }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
 
-  .report-actions { display: flex; gap: 10px; margin-bottom: 14px; }
-  .report-actions button {
-    flex: 1; padding: 10px; font-size: 13px; font-weight: 600;
-    border-radius: 10px; border: none; background: #1a1a1a; color: #fff;
-  }
-  .table-wrap {
-    overflow-x: auto; border: 1px solid #e2e0d8; border-radius: 10px; background: #fff;
-  }
-  table { border-collapse: collapse; width: 100%; min-width: 700px; font-size: 12.5px; }
-  th {
-    text-align: left; padding: 9px 10px; background: #eceae2;
-    border-bottom: 1px solid #d3d1c7; white-space: nowrap; font-weight: 600;
-  }
-  td { padding: 8px 10px; border-bottom: 1px solid #ece9e0; vertical-align: top; white-space: nowrap; }
-  td.work-cell { white-space: pre-wrap; min-width: 160px; }
-  tr:nth-child(even) td { background: #fafaf7; }
-  .empty-msg { padding: 16px; color: #999; font-size: 13px; text-align: center; }
-  .row-btn {
-    padding: 3px 8px; font-size: 11px; border-radius: 6px;
-    border: 1px solid #d3d1c7; background: #fff; margin-right: 4px;
-  }
-  .edit-box input, .edit-box textarea { margin-bottom: 8px; }
-  .edit-actions button {
-    padding: 5px 12px; font-size: 12px; border-radius: 6px;
-    border: 1px solid #d3d1c7; background: #fff; margin-right: 6px;
-  }
-</style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      transition: .25s;
+    }
+
+    body.dark {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: #334155;
+    }
+
+    .app {
+      max-width: 600px;
+      margin: auto;
+      min-height: 100vh;
+      padding-bottom: 30px;
+    }
+
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 25px 20px;
+      border-radius: 0 0 25px 25px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 25px;
+    }
+
+    header p {
+      margin: 7px 0 0;
+      opacity: .9;
+    }
+
+    .screen {
+      display: none;
+      padding: 20px;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 5px 20px rgba(0,0,0,.05);
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 14px;
+      margin: 7px 0 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 16px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    button {
+      border: 0;
+      border-radius: 13px;
+      padding: 14px 18px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .primary {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      margin-top: 8px;
+    }
+
+    .secondary {
+      background: var(--border);
+      color: var(--text);
+    }
+
+    .danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .success {
+      background: var(--success);
+      color: white;
+    }
+
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .top-row button {
+      padding: 9px 12px;
+      font-size: 14px;
+    }
+
+    .home-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .home-btn {
+      min-height: 125px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 20px;
+      padding: 18px;
+      text-align: left;
+      box-shadow: 0 5px 20px rgba(0,0,0,.05);
+    }
+
+    .home-btn .icon {
+      font-size: 32px;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    .home-btn span {
+      font-size: 18px;
+    }
+
+    .price {
+      font-size: 38px;
+      font-weight: bold;
+      margin: 15px 0;
+      color: var(--primary);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 20px;
+      background: rgba(37,99,235,.12);
+      color: var(--primary);
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .step {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .wizard-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .wizard-buttons button {
+      flex: 1;
+    }
+
+    .report-item {
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 15px;
+      margin-bottom: 12px;
+      background: var(--card);
+    }
+
+    .report-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 7px;
+    }
+
+    .report-meta {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .report-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .report-actions button {
+      flex: 1;
+      padding: 10px;
+      font-size: 14px;
+    }
+
+    .nav {
+      display: flex;
+      gap: 8px;
+      margin-top: 15px;
+    }
+
+    .nav button {
+      flex: 1;
+      font-size: 13px;
+      padding: 11px 5px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .message {
+      padding: 12px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .error {
+      background: rgba(220,38,38,.12);
+      color: #ef4444;
+    }
+
+    .info {
+      background: rgba(37,99,235,.12);
+      color: var(--primary);
+    }
+
+    .success-msg {
+      background: rgba(22,163,74,.12);
+      color: #16a34a;
+    }
+
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    #themeColor {
+      width: 60px;
+      height: 45px;
+      padding: 2px;
+      margin: 0;
+    }
+
+    @media (max-width: 400px) {
+      .home-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
+
 <body>
+
 <div class="app">
 
-  <div class="topbar">
-    <h1 id="pageTitle">Daily Work Log</h1>
-    <div class="lang-row">
-      <button id="langHi" class="active">हिंदी</button>
-      <button id="langEn">EN</button>
+  <header>
+    <div class="top-row">
+      <div>
+        <h1>Daily Work Note</h1>
+        <p id="headerSub">Your daily work companion</p>
+      </div>
+      <button class="secondary" onclick="toggleLanguage()" id="langBtn">हिंदी</button>
     </div>
-  </div>
+  </header>
 
-  <div id="screenHome" class="screen active">
-    <button class="home-btn" id="goReport">
-      <span class="icon">&#128202;</span>
-      <span>
-        <div id="lblReportBtn">View Daily Report</div>
-        <div class="sub" id="lblReportSub">Excel jaisi report dekho</div>
-      </span>
-    </button>
-    <button class="home-btn" id="goWrite">
-      <span class="icon">&#9998;</span>
-      <span>
-        <div id="lblWriteBtn">Write Daily Work</div>
-        <div class="sub" id="lblWriteSub">Aaj ka kaam likho</div>
-      </span>
-    </button>
-  </div>
+  <!-- AUTH -->
+  <section id="authScreen" class="screen active">
 
-  <div id="screenWrite" class="screen">
-    <button class="back-btn" id="backFromWrite1">&larr; <span id="lblBack1">Back</span></button>
-    <div class="step-card">
-      <div class="step-progress" id="stepProg">1 / 4</div>
-      <div class="step-title" id="stepTitle">Machine</div>
-      <input id="stepInput" type="text">
-      <p class="err" id="stepErr"></p>
-      <div class="step-actions">
-        <button class="btn-secondary" id="stepBack" style="display:none;">&larr;</button>
-        <button class="btn-primary" id="stepNext">Next</button>
+    <div class="card">
+      <h2 id="authTitle">Login</h2>
+
+      <div id="authMessage" class="message"></div>
+
+      <input id="email" type="email" placeholder="Email" />
+      <input id="password" type="password" placeholder="Password" />
+
+      <button class="primary" onclick="login()" id="loginBtn">
+        Login
+      </button>
+
+      <button class="secondary" style="width:100%;margin-top:10px"
+              onclick="signup()" id="signupBtn">
+        Create Account
+      </button>
+    </div>
+
+  </section>
+
+  <!-- PAYMENT -->
+  <section id="paymentScreen" class="screen">
+
+    <div class="card">
+      <span class="badge">Lifetime Access</span>
+
+      <h2 id="paymentTitle">Unlock Daily Work Note</h2>
+
+      <div class="price">₹99</div>
+
+      <p id="paymentDescription">
+        One-time payment. Lifetime access.
+      </p>
+
+      <div id="paymentMessage" class="message"></div>
+
+      <button class="primary" onclick="startPayment()" id="payBtn">
+        Pay ₹99 & Unlock
+      </button>
+
+      <button class="secondary"
+              style="width:100%;margin-top:10px"
+              onclick="logout()">
+        Logout
+      </button>
+    </div>
+
+  </section>
+
+  <!-- HOME -->
+  <section id="homeScreen" class="screen">
+
+    <div class="card">
+      <div class="top-row">
+        <div>
+          <div style="color:var(--muted);font-size:14px">Welcome</div>
+          <strong id="userEmail"></strong>
+        </div>
+
+        <button class="secondary" onclick="logout()">Logout</button>
       </div>
     </div>
-  </div>
 
-  <div id="screenReport" class="screen">
-    <button class="back-btn" id="backFromReport">&larr; <span id="lblBack2">Back</span></button>
-    <div class="report-actions">
-      <button id="exportBtn">&#11015; <span id="lblExport">Export Excel</span></button>
+    <div class="home-grid">
+
+      <button class="home-btn" onclick="openWrite()">
+        <span class="icon">📝</span>
+        <span id="writeText">Write Work Note</span>
+      </button>
+
+      <button class="home-btn" onclick="openReport()">
+        <span class="icon">📊</span>
+        <span id="reportText">Work Report</span>
+      </button>
+
+      <button class="home-btn" onclick="openSettings()">
+        <span class="icon">⚙️</span>
+        <span id="settingsText">Settings</span>
+      </button>
+
+      <button class="home-btn" onclick="exportExcel()">
+        <span class="icon">📥</span>
+        <span id="excelText">Export Excel</span>
+      </button>
+
     </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr id="headRow"></tr></thead>
-        <tbody id="reportBody"></tbody>
-      </table>
+
+  </section>
+
+  <!-- WRITE -->
+  <section id="writeScreen" class="screen">
+
+    <div class="card">
+
+      <div class="top-row">
+        <h2 id="writeTitle">Write Work Note</h2>
+        <button class="secondary" onclick="showScreen('homeScreen')">✕</button>
+      </div>
+
+      <div class="step" id="stepText">Step 1 of 4</div>
+
+      <!-- STEP 1 -->
+      <div id="step1">
+        <h3>🏭 Machine</h3>
+        <input id="machine" placeholder="Enter machine name" />
+
+        <div class="wizard-buttons">
+          <button class="primary" onclick="nextStep(2)">Next</button>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div id="step2" class="hidden">
+        <h3>📍 Location</h3>
+        <input id="location" placeholder="Enter location" />
+
+        <div class="wizard-buttons">
+          <button class="secondary" onclick="nextStep(1)">Back</button>
+          <button class="primary" onclick="nextStep(3)">Next</button>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div id="step3" class="hidden">
+        <h3>⚙️ PLC</h3>
+        <input id="plc" placeholder="Enter PLC details" />
+
+        <div class="wizard-buttons">
+          <button class="secondary" onclick="nextStep(2)">Back</button>
+          <button class="primary" onclick="nextStep(4)">Next</button>
+        </div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div id="step4" class="hidden">
+        <h3>🛠️ What work did you do?</h3>
+
+        <textarea id="work"
+                  placeholder="Describe your work..."></textarea>
+
+        <div class="wizard-buttons">
+          <button class="secondary" onclick="nextStep(3)">Back</button>
+          <button class="success" onclick="saveWork()">Save Work</button>
+        </div>
+      </div>
+
     </div>
-  </div>
+
+  </section>
+
+  <!-- REPORT -->
+  <section id="reportScreen" class="screen">
+
+    <div class="card">
+
+      <div class="top-row">
+        <h2 id="reportTitle">Work Report</h2>
+        <button class="secondary" onclick="showScreen('homeScreen')">✕</button>
+      </div>
+
+      <div id="reportMessage" class="message"></div>
+
+      <button class="primary" onclick="exportExcel()">
+        📥 Export to Excel
+      </button>
+
+    </div>
+
+    <div id="reportList"></div>
+
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="settingsScreen" class="screen">
+
+    <div class="card">
+
+      <div class="top-row">
+        <h2>⚙️ Settings</h2>
+        <button class="secondary" onclick="showScreen('homeScreen')">✕</button>
+      </div>
+
+      <h3>Appearance</h3>
+
+      <button class="secondary"
+              style="width:100%;margin-bottom:12px"
+              onclick="toggleDarkMode()">
+        🌙 Dark Mode
+      </button>
+
+      <div class="color-row">
+        <span>Theme Color</span>
+        <input id="themeColor"
+               type="color"
+               value="#2563eb"
+               onchange="changeThemeColor(this.value)" />
+      </div>
+
+      <hr style="border:0;border-top:1px solid var(--border);margin:20px 0">
+
+      <p style="color:var(--muted)">
+        Daily Work Note
+      </p>
+
+      <p style="color:var(--muted);font-size:13px">
+        Version 1.0
+      </p>
+
+    </div>
+
+  </section>
 
 </div>
 
 <script>
-const T = {
-  hi: {
-    appTitle: 'Daily Work Log',
-    reportBtn: 'View Daily Report', reportSub: 'Excel jaisi report dekho',
-    writeBtn: 'Write Daily Work', writeSub: 'Aaj ka kaam likho',
-    back: 'Back',
-    steps: ['Machine', 'Location', 'PLC', 'Aapne kya kaam kiya'],
-    stepPh: ['Machine ka naam', 'Location', 'PLC number / naam', 'Yahan likhiye...'],
-    next: 'Next', save: 'Save karo', errEmpty: 'Ye field khali nahi ho sakta',
-    exportLbl: 'Excel me bhejo',
-    empty: 'Abhi tak koi entry nahi hai.',
-    edit: 'Edit', del: 'Delete', update: 'Update', cancel: 'Cancel', confirmDel: 'Ye entry delete karni hai?',
-    cols: ['Date','Day','Time','Machine','Location','PLC','Kaam','Action']
-  },
-  en: {
-    appTitle: 'Daily Work Log',
-    reportBtn: 'View Daily Report', reportSub: 'See your Excel-style report',
-    writeBtn: 'Write Daily Work', writeSub: "Log today's work",
-    back: 'Back',
-    steps: ['Machine', 'Location', 'PLC', 'What did you do'],
-    stepPh: ['Machine name', 'Location', 'PLC number / name', 'Write here...'],
-    next: 'Next', save: 'Save', errEmpty: 'This field cannot be empty',
-    exportLbl: 'Export to Excel',
-    empty: 'No entries yet.',
-    edit: 'Edit', del: 'Delete', update: 'Update', cancel: 'Cancel', confirmDel: 'Delete this entry?',
-    cols: ['Date','Day','Time','Machine','Location','PLC','Work','Action']
-  }
-};
-let lang = 'hi';
-const STORAGE_KEY = 'dailyWorkLogEntriesV2';
 
-const el = id => document.getElementById(id);
-const screens = { home: el('screenHome'), write: el('screenWrite'), report: el('screenReport') };
+  /* =========================
+     CONFIGURATION
+  ========================= */
 
-function showScreen(name) {
-  Object.values(screens).forEach(s => s.classList.remove('active'));
-  screens[name].classList.add('active');
-}
+  const SUPABASE_URL =
+    "https://xfduersqierdndkwarpo.supabase.co";
 
-function getEntries() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-  catch (e) { return []; }
-}
-function setEntries(list) { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
+  const SUPABASE_PUBLISHABLE_KEY =
+    "sb_publishable_yiEXw6BKR3-hhvL5Jtl8qQ_D8Boz2Bp";
 
-function fmtParts(ts) {
-  const d = new Date(ts);
-  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  return {
-    day: days[d.getDay()],
-    date: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-    time: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+  /*
+    PASTE YOUR RAZORPAY TEST MODE KEY ID HERE
+    Example:
+    rzp_test_xxxxxxxxxxxxx
+  */
+
+  const RAZORPAY_KEY_ID =
+    "rzp_test_TZb0ZMIodhJXN9"; 
+
+  const supabaseClient =
+    supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY
+    );
+
+  const VERIFY_FUNCTION =
+    SUPABASE_URL +
+    "/functions/v1/razorpay-verify";
+
+
+  /* =========================
+     GLOBAL STATE
+  ========================= */
+
+  let currentUser = null;
+  let editingId = null;
+
+  let wizardData = {
+    machine: "",
+    location: "",
+    plc: "",
+    work: ""
   };
-}
 
-function applyLang() {
-  const t = T[lang];
-  el('pageTitle').textContent = t.appTitle;
-  el('lblReportBtn').textContent = t.reportBtn;
-  el('lblReportSub').textContent = t.reportSub;
-  el('lblWriteBtn').textContent = t.writeBtn;
-  el('lblWriteSub').textContent = t.writeSub;
-  el('lblBack1').textContent = t.back;
-  el('lblBack2').textContent = t.back;
-  el('lblExport').textContent = t.exportLbl;
-  el('langHi').classList.toggle('active', lang === 'hi');
-  el('langEn').classList.toggle('active', lang === 'en');
-  el('headRow').innerHTML = t.cols.map(c => '<th>' + c + '</th>').join('');
-  renderStep();
-  renderReport();
-}
-el('langHi').addEventListener('click', () => { lang = 'hi'; applyLang(); });
-el('langEn').addEventListener('click', () => { lang = 'en'; applyLang(); });
+  let currentLanguage = "en";
 
-// ---- navigation ----
-el('goReport').addEventListener('click', () => { showScreen('report'); renderReport(); });
-el('goWrite').addEventListener('click', () => { resetWizard(); showScreen('write'); });
-el('backFromWrite1').addEventListener('click', () => showScreen('home'));
-el('backFromReport').addEventListener('click', () => showScreen('home'));
 
-// ---- write wizard ----
-let wizardStep = 0;
-let wizardData = {};
-const FIELD_KEYS = ['machine', 'location', 'plc', 'work'];
+  /* =========================
+     TRANSLATIONS
+  ========================= */
 
-function resetWizard() {
-  wizardStep = 0;
-  wizardData = {};
-  renderStep();
-}
+  const translations = {
 
-function renderStep() {
-  const t = T[lang];
-  el('stepProg').textContent = (wizardStep + 1) + ' / ' + t.steps.length;
-  el('stepTitle').textContent = t.steps[wizardStep];
-  el('stepErr').style.display = 'none';
-  const input = el('stepInput');
-  input.value = wizardData[FIELD_KEYS[wizardStep]] || '';
-  input.placeholder = t.stepPh[wizardStep];
+    en: {
+      headerSub: "Your daily work companion",
+      login: "Login",
+      signup: "Create Account",
+      write: "Write Work Note",
+      report: "Work Report",
+      settings: "Settings",
+      excel: "Export Excel"
+    },
 
-  const oldInput = input;
-  const newInput = oldInput.cloneNode(true);
-  oldInput.parentNode.replaceChild(newInput, oldInput);
-  newInput.id = 'stepInput';
-
-  el('stepBack').style.display = wizardStep === 0 ? 'none' : 'inline-block';
-  el('stepNext').textContent = wizardStep === t.steps.length - 1 ? t.save : t.next;
-}
-
-el('stepBack').addEventListener('click', () => {
-  const val = el('stepInput').value.trim();
-  wizardData[FIELD_KEYS[wizardStep]] = val;
-  wizardStep--;
-  renderStep();
-});
-
-el('stepNext').addEventListener('click', () => {
-  const t = T[lang];
-  const val = el('stepInput').value.trim();
-  if (!val) {
-    el('stepErr').textContent = t.errEmpty;
-    el('stepErr').style.display = 'block';
-    return;
-  }
-  wizardData[FIELD_KEYS[wizardStep]] = val;
-
-  if (wizardStep === t.steps.length - 1) {
-    const list = getEntries();
-    list.push({
-      id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
-      machine: wizardData.machine,
-      location: wizardData.location,
-      plc: wizardData.plc,
-      work: wizardData.work,
-      ts: Date.now()
-    });
-    setEntries(list);
-    showScreen('home');
-  } else {
-    wizardStep++;
-    renderStep();
-  }
-});
-
-// ---- report ----
-function renderReport() {
-  const t = T[lang];
-  const body = el('reportBody');
-  const items = getEntries().slice().sort((a, b) => b.ts - a.ts);
-  if (items.length === 0) {
-    body.innerHTML = '<tr><td colspan="8" class="empty-msg">' + t.empty + '</td></tr>';
-    return;
-  }
-  body.innerHTML = '';
-  items.forEach(it => {
-    const { day, date, time } = fmtParts(it.ts);
-    const tr = document.createElement('tr');
-    tr.innerHTML =
-      '<td>' + date + '</td>' +
-      '<td>' + day + '</td>' +
-      '<td>' + time + '</td>' +
-      '<td class="mach"></td>' +
-      '<td class="loc"></td>' +
-      '<td class="plc"></td>' +
-      '<td class="work-cell work"></td>' +
-      '<td style="white-space:nowrap;">' +
-        '<button class="row-btn editBtn">' + t.edit + '</button>' +
-        '<button class="row-btn delBtn">' + t.del + '</button>' +
-      '</td>';
-    tr.querySelector('.mach').textContent = it.machine || '';
-    tr.querySelector('.loc').textContent = it.location || '';
-    tr.querySelector('.plc').textContent = it.plc || '';
-    tr.querySelector('.work').textContent = it.work || '';
-    tr.querySelector('.editBtn').addEventListener('click', () => startEdit(tr, it, t));
-    tr.querySelector('.delBtn').addEventListener('click', () => {
-      if (confirm(t.confirmDel)) {
-        setEntries(getEntries().filter(e => e.id !== it.id));
-        renderReport();
-      }
-    });
-    body.appendChild(tr);
-  });
-}
-
-function startEdit(tr, it, t) {
-  tr.innerHTML = '<td colspan="8" class="edit-box">' +
-    '<input class="eMach" placeholder="Machine">' +
-    '<input class="eLoc" placeholder="Location">' +
-    '<input class="ePlc" placeholder="PLC">' +
-    '<textarea class="eWork" rows="2"></textarea>' +
-    '<div class="edit-actions">' +
-      '<button class="updBtn">' + t.update + '</button>' +
-      '<button class="cancelBtn">' + t.cancel + '</button>' +
-    '</div>' +
-  '</td>';
-  tr.querySelector('.eMach').value = it.machine || '';
-  tr.querySelector('.eLoc').value = it.location || '';
-  tr.querySelector('.ePlc').value = it.plc || '';
-  tr.querySelector('.eWork').value = it.work || '';
-  tr.querySelector('.updBtn').addEventListener('click', () => {
-    const list = getEntries();
-    const idx = list.findIndex(e => e.id === it.id);
-    if (idx > -1) {
-      list[idx].machine = tr.querySelector('.eMach').value.trim();
-      list[idx].location = tr.querySelector('.eLoc').value.trim();
-      list[idx].plc = tr.querySelector('.ePlc').value.trim();
-      const w = tr.querySelector('.eWork').value.trim();
-      if (w) list[idx].work = w;
-      setEntries(list);
+    hi: {
+      headerSub: "आपका दैनिक कार्य साथी",
+      login: "लॉगिन",
+      signup: "अकाउंट बनाएं",
+      write: "काम की नोट लिखें",
+      report: "काम की रिपोर्ट",
+      settings: "सेटिंग्स",
+      excel: "Excel Export"
     }
-    renderReport();
-  });
-  tr.querySelector('.cancelBtn').addEventListener('click', renderReport);
-}
 
-// ---- excel export ----
-el('exportBtn').addEventListener('click', () => {
-  const t = T[lang];
-  const items = getEntries().slice().sort((a, b) => b.ts - a.ts);
-  const rows = items.map(it => {
-    const { day, date, time } = fmtParts(it.ts);
-    const row = {};
-    row[t.cols[0]] = date;
-    row[t.cols[1]] = day;
-    row[t.cols[2]] = time;
-    row[t.cols[3]] = it.machine || '';
-    row[t.cols[4]] = it.location || '';
-    row[t.cols[5]] = it.plc || '';
-    row[t.cols[6]] = it.work || '';
-    return row;
-  });
-  const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [{wch:12},{wch:8},{wch:8},{wch:16},{wch:16},{wch:14},{wch:40}];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Daily Log');
-  const fname = 'daily-work-log-' + new Date().toISOString().slice(0,10) + '.xlsx';
-  XLSX.writeFile(wb, fname);
-});
+  };
 
-applyLang();
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  });
-}
+  /* =========================
+     SCREEN
+  ========================= */
+
+  function showScreen(id) {
+
+    document
+      .querySelectorAll(".screen")
+      .forEach(s => s.classList.remove("active"));
+
+    document
+      .getElementById(id)
+      .classList.add("active");
+  }
+
+
+  /* =========================
+     MESSAGES
+  ========================= */
+
+  function showMessage(id, text, type = "info") {
+
+    const el = document.getElementById(id);
+
+    if (!el) return;
+
+    el.className = "message show " + type;
+    el.textContent = text;
+  }
+
+
+  function hideMessage(id) {
+
+    const el = document.getElementById(id);
+
+    if (el) {
+      el.className = "message";
+      el.textContent = "";
+    }
+  }
+
+
+  /* =========================
+     AUTH
+  ========================= */
+
+  async function login() {
+
+    const email =
+      document.getElementById("email").value.trim();
+
+    const password =
+      document.getElementById("password").value;
+
+    hideMessage("authMessage");
+
+    if (!email || !password) {
+
+      showMessage(
+        "authMessage",
+        "Email and password required.",
+        "error"
+      );
+
+      return;
+    }
+
+    document.getElementById("loginBtn").disabled = true;
+
+    const { data, error } =
+      await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+
+    document.getElementById("loginBtn").disabled = false;
+
+    if (error) {
+
+      showMessage(
+        "authMessage",
+        error.message,
+        "error"
+      );
+
+      return;
+    }
+
+    currentUser = data.user;
+
+    await afterLogin();
+  }
+
+
+  async function signup() {
+
+    const email =
+      document.getElementById("email").value.trim();
+
+    const password =
+      document.getElementById("password").value;
+
+    hideMessage("authMessage");
+
+    if (!email || !password) {
+
+      showMessage(
+        "authMessage",
+        "Email and password required.",
+        "error"
+      );
+
+      return;
+    }
+
+    if (password.length < 6) {
+
+      showMessage(
+        "authMessage",
+        "Password must be at least 6 characters.",
+        "error"
+      );
+
+      return;
+    }
+
+    document.getElementById("signupBtn").disabled = true;
+
+    const { data, error } =
+      await supabaseClient.auth.signUp({
+        email,
+        password
+      });
+
+    document.getElementById("signupBtn").disabled = false;
+
+    if (error) {
+
+      showMessage(
+        "authMessage",
+        error.message,
+        "error"
+      );
+
+      return;
+    }
+
+    if (data.session && data.user) {
+
+      currentUser = data.user;
+
+      await afterLogin();
+
+    } else {
+
+      showMessage(
+        "authMessage",
+        "Account created. Please verify your email, then login.",
+        "success-msg"
+      );
+
+    }
+  }
+
+
+  async function logout() {
+
+    await supabaseClient.auth.signOut();
+
+    currentUser = null;
+
+    showScreen("authScreen");
+  }
+
+
+  /* =========================
+     LOGIN → ACCESS CHECK
+  ========================= */
+
+  async function afterLogin() {
+
+    if (!currentUser) return;
+
+    document.getElementById("userEmail").textContent =
+      currentUser.email || "";
+
+    const hasAccess =
+      await checkAccess();
+
+    if (hasAccess) {
+
+      showScreen("homeScreen");
+      await loadReports();
+
+    } else {
+
+      showScreen("paymentScreen");
+
+    }
+  }
+
+
+  async function checkAccess() {
+
+    if (!currentUser) return false;
+
+    const { data, error } =
+      await supabaseClient
+        .from("user_access")
+        .select(
+          "id,user_id,plan,amount,status,expires_at"
+        )
+        .eq("user_id", currentUser.id)
+        .eq("status", "active")
+        .maybeSingle();
+
+    if (error) {
+
+      console.error(error);
+
+      return false;
+    }
+
+    if (!data) return false;
+
+    /*
+      Lifetime access:
+      expires_at = NULL
+    */
+
+    if (data.expires_at === null) {
+      return true;
+    }
+
+    return new Date(data.expires_at) > new Date();
+  }
+
+
+  /* =========================
+     RAZORPAY PAYMENT
+  ========================= */
+
+  async function startPayment() {
+
+    if (!currentUser) {
+
+      showScreen("authScreen");
+      return;
+    }
+
+    if (
+      !RAZORPAY_KEY_ID ||
+      RAZORPAY_KEY_ID === "YOUR_RAZORPAY_TEST_KEY_ID"
+    ) {
+
+      showMessage(
+        "paymentMessage",
+        "Razorpay Test Key ID is not added yet.",
+        "error"
+      );
+
+      return;
+    }
+
+    hideMessage("paymentMessage");
+
+    const payBtn =
+      document.getElementById("payBtn");
+
+    payBtn.disabled = true;
+    payBtn.textContent = "Creating order...";
+
+    try {
+
+      const session =
+        await supabaseClient.auth.getSession();
+
+      const accessToken =
+        session.data.session?.access_token;
+
+      if (!accessToken) {
+        throw new Error("Login session expired.");
+      }
+
+      const response =
+        await fetch(VERIFY_FUNCTION, {
+
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization":
+              "Bearer " + accessToken
+          },
+
+          body: JSON.stringify({
+            action: "create_order"
+          })
+
+        });
+
+      const result =
+        await response.json();
+
+      if (!response.ok) {
+
+        throw new Error(
+          result.error ||
+          result.message ||
+          "Unable to create payment order."
+        );
+      }
+
+      /*
+        Supports either:
+        { order: {...} }
+        or direct order response.
+      */
+
+      const order =
+        result.order ||
+        result;
+
+      if (!order.id) {
+
+        throw new Error(
+          "Razorpay order ID not received."
+        );
+      }
+
+      openRazorpayCheckout(
+        order,
+        accessToken
+      );
+
+    } catch (error) {
+
+      console.error(error);
+
+      showMessage(
+        "paymentMessage",
+        error.message,
+        "error"
+      );
+
+    } finally {
+
+      payBtn.disabled = false;
+      payBtn.textContent = "Pay ₹99 & Unlock";
+    }
+  }
+
+
+  function openRazorpayCheckout(
+    order,
+    accessToken
+  ) {
+
+    const options = {
+
+      key: RAZORPAY_KEY_ID,
+
+      amount: order.amount,
+
+      currency: order.currency || "INR",
+
+      name: "Daily Work Note",
+
+      description:
+        "Daily Work Note Lifetime Access",
+
+      order_id: order.id,
+
+      prefill: {
+        email: currentUser.email
+      },
+
+      theme: {
+        color:
+          getComputedStyle(document.documentElement)
+            .getPropertyValue("--primary")
+            .trim()
+      },
+
+      handler: async function(response) {
+
+        await verifyPayment(
+          response,
+          accessToken
+        );
+      },
+
+      modal: {
+
+        ondismiss: function() {
+
+          showMessage(
+            "paymentMessage",
+            "Payment window closed.",
+            "info"
+          );
+        }
+      }
+
+    };
+
+    const razorpay =
+      new Razorpay(options);
+
+    razorpay.open();
+  }
+
+
+  async function verifyPayment(
+    response,
+    accessToken
+  ) {
+
+    showMessage(
+      "paymentMessage",
+      "Verifying payment...",
+      "info"
+    );
+
+    try {
+
+      const result =
+        await fetch(VERIFY_FUNCTION, {
+
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization":
+              "Bearer " + accessToken
+          },
+
+          body: JSON.stringify({
+
+            action: "verify_payment",
+
+            razorpay_order_id:
+              response.razorpay_order_id,
+
+            razorpay_payment_id:
+              response.razorpay_payment_id,
+
+            razorpay_signature:
+              response.razorpay_signature
+
+          })
+
+        });
+
+      const data =
+        await result.json();
+
+      if (!result.ok) {
+
+        throw new Error(
+          data.error ||
+          data.message ||
+          "Payment verification failed."
+        );
+      }
+
+      const access =
+        await checkAccess();
+
+      if (!access) {
+
+        throw new Error(
+          "Payment verified, but access is not active yet."
+        );
+      }
+
+      showMessage(
+        "paymentMessage",
+        "Payment successful! Lifetime access unlocked.",
+        "success-msg"
+      );
+
+      setTimeout(async () => {
+
+        showScreen("homeScreen");
+
+        await loadReports();
+
+      }, 800);
+
+    } catch (error) {
+
+      console.error(error);
+
+      showMessage(
+        "paymentMessage",
+        error.message,
+        "error"
+      );
+    }
+  }
+
+
+  /* =========================
+     WRITE WORK
+  ========================= */
+
+  function openWrite() {
+
+    editingId = null;
+
+    wizardData = {
+      machine: "",
+      location: "",
+      plc: "",
+      work: ""
+    };
+
+    document.getElementById("machine").value = "";
+    document.getElementById("location").value = "";
+    document.getElementById("plc").value = "";
+    document.getElementById("work").value = "";
+
+    nextStep(1);
+
+    showScreen("writeScreen");
+  }
+
+
+  function nextStep(step) {
+
+    for (let i = 1; i <= 4; i++) {
+
+      document
+        .getElementById("step" + i)
+        .classList.add("hidden");
+    }
+
+    document
+      .getElementById("step" + step)
+      .classList.remove("hidden");
+
+    document.getElementById("stepText").textContent =
+      "Step " + step + " of 4";
+  }
+
+
+  async function saveWork() {
+
+    if (!currentUser) return;
+
+    const machine =
+      document.getElementById("machine").value.trim();
+
+    const location =
+      document.getElementById("location").value.trim();
+
+    const plc =
+      document.getElementById("plc").value.trim();
+
+    const work =
+      document.getElementById("work").value.trim();
+
+    if (!machine || !work) {
+
+      alert(
+        "Machine and work description are required."
+      );
+
+      return;
+    }
+
+    const record = {
+
+      user_id: currentUser.id,
+
+      work_date:
+        new Date()
+          .toISOString()
+          .slice(0, 10),
+
+      title: machine,
+
+      description: work,
+
+      hours: null,
+
+      status: "completed"
+    };
+
+
+    let result;
+
+    if (editingId) {
+
+      result =
+        await supabaseClient
+          .from("work_logs")
+          .update(record)
+          .eq("id", editingId)
+          .eq("user_id", currentUser.id);
+
+    } else {
+
+      result =
+        await supabaseClient
+          .from("work_logs")
+          .insert(record);
+    }
+
+
+    if (result.error) {
+
+      alert(
+        "Error: " + result.error.message
+      );
+
+      return;
+    }
+
+    editingId = null;
+
+    alert(
+      "Work note saved successfully."
+    );
+
+    showScreen("reportScreen");
+
+    await loadReports();
+  }
+
+
+  /* =========================
+     REPORT
+  ========================= */
+
+  async function openReport() {
+
+    showScreen("reportScreen");
+
+    await loadReports();
+  }
+
+
+  async function loadReports() {
+
+    if (!currentUser) return;
+
+    const list =
+      document.getElementById("reportList");
+
+    list.innerHTML =
+      '<div class="card">Loading...</div>';
+
+
+    const { data, error } =
+      await supabaseClient
+        .from("work_logs")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .order("work_date", {
+          ascending: false
+        })
+        .order("created_at", {
+          ascending: false
+        });
+
+
+    if (error) {
+
+      list.innerHTML =
+        '<div class="card">Error: ' +
+        escapeHtml(error.message) +
+        '</div>';
+
+      return;
+    }
+
+
+    if (!data || data.length === 0) {
+
+      list.innerHTML =
+        '<div class="card" style="text-align:center;color:var(--muted)">No work notes yet.</div>';
+
+      return;
+    }
+
+
+    list.innerHTML = "";
+
+    data.forEach(item => {
+
+      const div =
+        document.createElement("div");
+
+      div.className = "report-item";
+
+      div.innerHTML = `
+
+        <div class="report-title">
+          ${escapeHtml(item.title || "Work")}
+        </div>
+
+        <div class="report-meta">
+          📅 ${escapeHtml(item.work_date || "")}
+        </div>
+
+        <div style="margin-bottom:12px">
+          ${escapeHtml(item.description || "")}
+        </div>
+
+        <div class="report-actions">
+
+          <button
+            class="secondary"
+            onclick="editWork('${item.id}')">
+            ✏️ Edit
+          </button>
+
+          <button
+            class="danger"
+            onclick="deleteWork('${item.id}')">
+            🗑️ Delete
+          </button>
+
+        </div>
+      `;
+
+      list.appendChild(div);
+    });
+  }
+
+
+  async function editWork(id) {
+
+    const { data, error } =
+      await supabaseClient
+        .from("work_logs")
+        .select("*")
+        .eq("id", id)
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+
+    if (error || !data) {
+
+      alert(
+        error?.message ||
+        "Work note not found."
+      );
+
+      return;
+    }
+
+    editingId = id;
+
+    document.getElementById("machine").value =
+      data.title || "";
+
+    document.getElementById("work").value =
+      data.description || "";
+
+    document.getElementById("location").value =
+      "";
+
+    document.getElementById("plc").value =
+      "";
+
+    nextStep(1);
+
+    showScreen("writeScreen");
+  }
+
+
+  async function deleteWork(id) {
+
+    if (!confirm(
+      "Delete this work note?"
+    )) return;
+
+    const { error } =
+      await supabaseClient
+        .from("work_logs")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", currentUser.id);
+
+    if (error) {
+
+      alert(
+        "Error: " + error.message
+      );
+
+      return;
+    }
+
+    await loadReports();
+  }
+
+
+  /* =========================
+     EXCEL
+  ========================= */
+
+  async function exportExcel() {
+
+    if (!currentUser) return;
+
+    const { data, error } =
+      await supabaseClient
+        .from("work_logs")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .order("work_date", {
+          ascending: true
+        });
+
+    if (error) {
+
+      alert(
+        "Unable to export: " +
+        error.message
+      );
+
+      return;
+    }
+
+    if (!data || data.length === 0) {
+
+      alert("No work notes to export.");
+
+      return;
+    }
+
+
+    const rows =
+      data.map(item => ({
+
+        Date:
+          item.work_date || "",
+
+        Machine:
+          item.title || "",
+
+        Location:
+          "",
+
+        PLC:
+          "",
+
+        Work:
+          item.description || "",
+
+        Hours:
+          item.hours ?? "",
+
+        Status:
+          item.status || ""
+
+      }));
+
+
+    const worksheet =
+      XLSX.utils.json_to_sheet(rows);
+
+    const workbook =
+      XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      "Work Notes"
+    );
+
+    XLSX.writeFile(
+      workbook,
+      "Daily_Work_Note.xlsx"
+    );
+  }
+
+
+  /* =========================
+     SETTINGS
+  ========================= */
+
+  function openSettings() {
+
+    showScreen("settingsScreen");
+
+    const savedColor =
+      localStorage.getItem(
+        "dailyWorkNoteTheme"
+      );
+
+    if (savedColor) {
+
+      document.getElementById(
+        "themeColor"
+      ).value = savedColor;
+    }
+  }
+
+
+  function toggleDarkMode() {
+
+    document.body.classList.toggle("dark");
+
+    localStorage.setItem(
+      "dailyWorkNoteDark",
+      document.body.classList.contains("dark")
+    );
+  }
+
+
+  function changeThemeColor(color) {
+
+    document.documentElement.style
+      .setProperty("--primary", color);
+
+    localStorage.setItem(
+      "dailyWorkNoteTheme",
+      color
+    );
+
+    const meta =
+      document.querySelector(
+        'meta[name="theme-color"]'
+      );
+
+    if (meta) {
+      meta.setAttribute(
+        "content",
+        color
+      );
+    }
+  }
+
+
+  function loadSettings() {
+
+    const dark =
+      localStorage.getItem(
+        "dailyWorkNoteDark"
+      ) === "true";
+
+    if (dark) {
+      document.body.classList.add("dark");
+    }
+
+    const color =
+      localStorage.getItem(
+        "dailyWorkNoteTheme"
+      );
+
+    if (color) {
+
+      document.documentElement.style
+        .setProperty(
+          "--primary",
+          color
+        );
+
+      const input =
+        document.getElementById(
+          "themeColor"
+        );
+
+      if (input) {
+        input.value = color;
+      }
+    }
+  }
+
+
+  /* =========================
+     LANGUAGE
+  ========================= */
+
+  function toggleLanguage() {
+
+    currentLanguage =
+      currentLanguage === "en"
+        ? "hi"
+        : "en";
+
+    const t =
+      translations[currentLanguage];
+
+    document.getElementById(
+      "headerSub"
+    ).textContent = t.headerSub;
+
+    document.getElementById(
+      "authTitle"
+    ).textContent = t.login;
+
+    document.getElementById(
+      "loginBtn"
+    ).textContent = t.login;
+
+    document.getElementById(
+      "signupBtn"
+    ).textContent = t.signup;
+
+    document.getElementById(
+      "writeText"
+    ).textContent = t.write;
+
+    document.getElementById(
+      "reportText"
+    ).textContent = t.report;
+
+    document.getElementById(
+      "settingsText"
+    ).textContent = t.settings;
+
+    document.getElementById(
+      "excelText"
+    ).textContent = t.excel;
+
+    document.getElementById(
+      "langBtn"
+    ).textContent =
+      currentLanguage === "en"
+        ? "हिंदी"
+        : "English";
+  }
+
+
+  /* =========================
+     SECURITY / HTML
+  ========================= */
+
+  function escapeHtml(value) {
+
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+
+  /* =========================
+     INITIALIZATION
+  ========================= */
+
+  async function init() {
+
+    loadSettings();
+
+    const {
+      data
+    } =
+      await supabaseClient.auth.getSession();
+
+    if (data.session?.user) {
+
+      currentUser =
+        data.session.user;
+
+      await afterLogin();
+
+    } else {
+
+      showScreen("authScreen");
+    }
+
+
+    supabaseClient.auth.onAuthStateChange(
+      async (event, session) => {
+
+        if (session?.user) {
+
+          currentUser =
+            session.user;
+
+        } else {
+
+          currentUser = null;
+        }
+      }
+    );
+  }
+
+
+  init();
+
 </script>
+
 </body>
 </html>
