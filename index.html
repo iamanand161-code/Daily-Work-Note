@@ -929,14 +929,17 @@
         or direct order response.
       */
 
-      const order =
-        result.order ||
-        result;
+      const order = result.order?.id ? result.order : {
+    id: result.order_id,
+    amount: result.amount,
+    currency: result.currency,
+    key_id: result.key_id
+};
 
       if (!order.id) {
 
         throw new Error(
-          "Razorpay order ID not received."
+          "Razorpay order ID not received. Response: " + JSON.stringify(result)
         );
       }
 
